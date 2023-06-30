@@ -1,0 +1,10 @@
+{
+  "compatibilityLevel": "JAVA_8",
+  "package": "me.nixuge.multithreadedchunkloading.mixins",
+  "refmap": "refmap.multithreadedchunkloading.json",
+  "mixins": [],
+  "client": [
+    "ChunkLoaderMixin"
+  ],
+  "server": []
+}
