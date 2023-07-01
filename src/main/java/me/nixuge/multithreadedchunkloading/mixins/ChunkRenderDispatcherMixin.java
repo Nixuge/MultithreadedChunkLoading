@@ -1,4 +1,4 @@
-package me.nixuge.multithreadedchunkloading.mixins.chunk;
+package me.nixuge.multithreadedchunkloading.mixins;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
@@ -36,10 +36,10 @@ public class ChunkRenderDispatcherMixin {
     @Shadow
     private BlockingQueue<ChunkCompileTaskGenerator> queueChunkUpdates;
 
-    @Shadow
-    private BlockingQueue<RegionRenderCacheBuilder> queueFreeRenderBuilders;
+//    @Shadow
+//    private BlockingQueue<RegionRenderCacheBuilder> queueFreeRenderBuilders;
 
-    private static final BlockingQueue<RegionRenderCacheBuilder> newQueueFreeRenderBuilders = Queues.newArrayBlockingQueue(500);
+    private static final BlockingQueue<RegionRenderCacheBuilder> newQueueFreeRenderBuilders = Queues.newArrayBlockingQueue(100);
 
     @Shadow
     @Final
@@ -72,7 +72,7 @@ public class ChunkRenderDispatcherMixin {
 //        } catch (Exception e) {
 //            System.out.println("owo " + e);
 //        }
-        for (int i = 0; i < 500; ++i) {
+        for (int i = 0; i < 200; ++i) { // 200 is enough lmao
             ChunkRenderWorker chunkrenderworker = new ChunkRenderWorker((ChunkRenderDispatcher) (Object) this);
             Thread thread = threadFactory.newThread(chunkrenderworker);
             thread.start();
@@ -80,7 +80,7 @@ public class ChunkRenderDispatcherMixin {
         }
         System.out.println("Runningt: " + listThreadedWorkers.size());
 
-        for (int j = 0; j < 500; ++j)
+        for (int j = 0; j < 100; ++j)
         {
             newQueueFreeRenderBuilders.add(new RegionRenderCacheBuilder());
         }

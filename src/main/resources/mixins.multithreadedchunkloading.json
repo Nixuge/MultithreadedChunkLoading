@@ -4,9 +4,8 @@
   "refmap": "refmap.multithreadedchunkloading.json",
   "mixins": [],
   "client": [
-    "chunk.ChunkRenderDispatcherMixin",
-    "chunk.ChunkRenderWorkerMixin",
-    "render.RenderGlobalMixin"
+    "ChunkRenderDispatcherMixin",
+    "RenderGlobalMixin"
   ],
   "server": []
 }

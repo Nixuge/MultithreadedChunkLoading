@@ -1,4 +1,4 @@
-package me.nixuge.multithreadedchunkloading.mixins.render;
+package me.nixuge.multithreadedchunkloading.mixins;
 
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher;
@@ -7,7 +7,6 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.Inject;
 
 import java.util.Iterator;
 import java.util.Set;
@@ -36,12 +35,12 @@ public class RenderGlobalMixin {
 
         if (!this.chunksToUpdate.isEmpty()) {
             Iterator<RenderChunk> iterator = this.chunksToUpdate.iterator();
-            System.out.println(this.chunksToUpdate.size());
-            int loopRan = 0;
+//            System.out.println(this.chunksToUpdate.size());
+//            int loopRan = 0;
             while (iterator.hasNext()) {
                 RenderChunk renderchunk = iterator.next();
 
-                loopRan++;
+//                loopRan++;
                 if (!this.renderDispatcher.updateChunkLater(renderchunk)) {
 //                    System.out.println("Broke due to full queue.");
                     break;
