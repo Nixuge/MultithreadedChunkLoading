@@ -4,9 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import net.minecraft.client.renderer.RegionRenderCacheBuilder;
-import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.chunk.*;
-import net.minecraft.client.renderer.vertex.VertexBuffer;
 import org.spongepowered.asm.mixin.*;
 
 import org.spongepowered.asm.mixin.injection.At;
@@ -14,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
@@ -32,8 +31,8 @@ public class ChunkRenderDispatcherMixin {
     @Shadow
     private BlockingQueue<ChunkCompileTaskGenerator> queueChunkUpdates;
 
-    @Shadow
-    private BlockingQueue<RegionRenderCacheBuilder> queueFreeRenderBuilders;
+//    @Shadow
+//    private BlockingQueue<RegionRenderCacheBuilder> queueFreeRenderBuilders;
 
     private static BlockingQueue<RegionRenderCacheBuilder> newQueueFreeRenderBuilders;
 
@@ -52,7 +51,6 @@ public class ChunkRenderDispatcherMixin {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void constructor(CallbackInfo ci) {
-        newQueueFreeRenderBuilders = Queues.newArrayBlockingQueue(50);
 
         for (int i = 0; i < 200; ++i) { // 200 is enough lmao
             ChunkRenderWorker chunkrenderworker = new ChunkRenderWorker((ChunkRenderDispatcher) (Object) this);
@@ -62,6 +60,7 @@ public class ChunkRenderDispatcherMixin {
         }
         System.out.println("Runningt: " + listThreadedWorkers.size());
 
+        newQueueFreeRenderBuilders = Queues.newArrayBlockingQueue(50);
         for (int j = 0; j < 50; ++j) {
             newQueueFreeRenderBuilders.add(new RegionRenderCacheBuilder());
         }
@@ -79,11 +78,7 @@ public class ChunkRenderDispatcherMixin {
         }
 
         final ChunkCompileTaskGenerator chunkcompiletaskgenerator = chunkRenderer.makeCompileTaskChunk();
-        chunkcompiletaskgenerator.addFinishRunnable(new Runnable() {
-            public void run() {
-                queueChunkUpdates.remove(chunkcompiletaskgenerator);
-            }
-        });
+        chunkcompiletaskgenerator.addFinishRunnable(() -> queueChunkUpdates.remove(chunkcompiletaskgenerator));
 
         queueChunkUpdates.add(chunkcompiletaskgenerator);
 
@@ -103,25 +98,9 @@ public class ChunkRenderDispatcherMixin {
      * @author Nixuge
      * @reason newQueueFreeRenderBuilders
      */
-    @Overwrite
-    public void stopChunkUpdates() {
-        this.clearChunkUpdates();
-
-        while (this.runChunkUploads(0L)) {
-
-        }
-
-        List<RegionRenderCacheBuilder> list = Lists.newArrayList();
-
-        while (list.size() != 5) {
-            try {
-                list.add(this.allocateRenderBuilder());
-            } catch (InterruptedException ignored) {
-
-            }
-        }
-
-        newQueueFreeRenderBuilders.addAll(list);
+    @Redirect(method = "stopChunkUpdates", at = @At(value = "INVOKE", target = "Ljava/util/concurrent/BlockingQueue;addAll(Ljava/util/Collection;)Z"))
+    public boolean stopChunkUpdates(BlockingQueue<RegionRenderCacheBuilder> instance, Collection<RegionRenderCacheBuilder> list) {
+        return newQueueFreeRenderBuilders.addAll(list);
     }
 
     /**
