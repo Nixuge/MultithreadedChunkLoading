@@ -12,7 +12,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
@@ -28,11 +27,15 @@ public class ChunkRenderDispatcherMixin {
     @Final
     private List<ChunkRenderWorker> listThreadedWorkers;
 
-    @Shadow
-    private BlockingQueue<ChunkCompileTaskGenerator> queueChunkUpdates;
+//    @Shadow
+//    private BlockingQueue<ChunkCompileTaskGenerator> queueChunkUpdates;
 
 //    @Shadow
 //    private BlockingQueue<RegionRenderCacheBuilder> queueFreeRenderBuilders;
+
+    // Not sure if this helps a lot, but the mod is already ram hungry
+    // Might as well just in case
+    private static final BlockingQueue<ChunkCompileTaskGenerator> newQueueChunkUpdates = Queues.newArrayBlockingQueue(1000);
 
     private static BlockingQueue<RegionRenderCacheBuilder> newQueueFreeRenderBuilders;
 
@@ -40,9 +43,6 @@ public class ChunkRenderDispatcherMixin {
     @Final
     private Queue<ListenableFutureTask<?>> queueChunkUploads = Queues.newArrayDeque();
 
-    @Shadow
-    public void clearChunkUpdates() {
-    }
 
     @Shadow
     public boolean runChunkUploads(long p_178516_1_) {
@@ -51,7 +51,10 @@ public class ChunkRenderDispatcherMixin {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void constructor(CallbackInfo ci) {
+        // queueChunkUpdates
+//        newQueueChunkUpdates =
 
+        // listThreadedWorkers
         for (int i = 0; i < 200; ++i) { // 200 is enough lmao
             ChunkRenderWorker chunkrenderworker = new ChunkRenderWorker((ChunkRenderDispatcher) (Object) this);
             Thread thread = threadFactory.newThread(chunkrenderworker);
@@ -60,6 +63,7 @@ public class ChunkRenderDispatcherMixin {
         }
         System.out.println("Runningt: " + listThreadedWorkers.size());
 
+        // queueFreeRenderBuilders
         newQueueFreeRenderBuilders = Queues.newArrayBlockingQueue(50);
         for (int j = 0; j < 50; ++j) {
             newQueueFreeRenderBuilders.add(new RegionRenderCacheBuilder());
@@ -73,17 +77,89 @@ public class ChunkRenderDispatcherMixin {
      */
     @Overwrite
     public boolean updateChunkLater(RenderChunk chunkRenderer) {
-        if (queueChunkUpdates.remainingCapacity() == 0) {
+        if (newQueueChunkUpdates.remainingCapacity() == 0) {
+//            System.out.println("returning because full!");
             return false;
         }
 
         final ChunkCompileTaskGenerator chunkcompiletaskgenerator = chunkRenderer.makeCompileTaskChunk();
-        chunkcompiletaskgenerator.addFinishRunnable(() -> queueChunkUpdates.remove(chunkcompiletaskgenerator));
+        chunkcompiletaskgenerator.addFinishRunnable(() -> newQueueChunkUpdates.remove(chunkcompiletaskgenerator));
 
-        queueChunkUpdates.add(chunkcompiletaskgenerator);
+        newQueueChunkUpdates.add(chunkcompiletaskgenerator);
 
         return true;
     }
+
+    /**
+     * @author Nixuge
+     * @reason newQueueChunkUpdates
+     */
+    @Overwrite
+    public ChunkCompileTaskGenerator getNextChunkUpdate() throws InterruptedException {
+        return newQueueChunkUpdates.take();
+    }
+
+    /**
+     * @author Nixuge
+     * @reason newQueueChunkUpdates
+     */
+    @Overwrite
+    public boolean updateTransparencyLater(RenderChunk chunkRenderer) {
+        chunkRenderer.getLockCompileTask().lock();
+
+        try
+        {
+            final ChunkCompileTaskGenerator chunkcompiletaskgenerator = chunkRenderer.makeCompileTaskTransparency();
+
+            if (chunkcompiletaskgenerator != null)
+            {
+                chunkcompiletaskgenerator.addFinishRunnable(() -> newQueueChunkUpdates.remove(chunkcompiletaskgenerator));
+                return newQueueChunkUpdates.offer(chunkcompiletaskgenerator);
+            }
+        }
+        finally
+        {
+            chunkRenderer.getLockCompileTask().unlock();
+        }
+
+        return true;
+    }
+
+    /**
+     * @author Nixuge
+     * @reason newQueueChunkUpdates
+     */
+    @Overwrite
+    public void clearChunkUpdates() {
+        while (!newQueueChunkUpdates.isEmpty())
+        {
+            ChunkCompileTaskGenerator chunkcompiletaskgenerator = newQueueChunkUpdates.poll();
+
+            if (chunkcompiletaskgenerator != null)
+            {
+                chunkcompiletaskgenerator.finish();
+            }
+        }
+    }
+
+    /*
+     * OPTIFINE FUNCTION,
+     * CAN'T BE MIXINED INTO HERE!
+     * @author Nixuge
+     * @reason newQueueChunkUpdates
+     */
+//    @Overwrite
+//    public boolean hasChunkUpdates() {
+//        return newQueueChunkUpdates.isEmpty() && this.queueChunkUploads.isEmpty();
+//    }
+
+
+
+
+
+
+
+
 
     /**
      * @author Nixuge
@@ -91,16 +167,40 @@ public class ChunkRenderDispatcherMixin {
      */
     @Overwrite
     public String getDebugInfo() {
-        return String.format("pC: %03d, pU: %03d, aB: %02d", this.queueChunkUpdates.size(), this.queueChunkUploads.size(), newQueueFreeRenderBuilders.size());
+        return String.format("pC: %04d/%04d, pU: %03d, aB: %02d", newQueueChunkUpdates.remainingCapacity(), newQueueChunkUpdates.size(), this.queueChunkUploads.size(), newQueueFreeRenderBuilders.size());
     }
 
     /**
+     * Note:
+     * Due to optifine, I have to for some reason
+     * unfortunately overwrite the whole thing.
+     * I can't just redirect the list call :/
      * @author Nixuge
      * @reason newQueueFreeRenderBuilders
      */
-    @Redirect(method = "stopChunkUpdates", at = @At(value = "INVOKE", target = "Ljava/util/concurrent/BlockingQueue;addAll(Ljava/util/Collection;)Z"))
-    public boolean stopChunkUpdates(BlockingQueue<RegionRenderCacheBuilder> instance, Collection<RegionRenderCacheBuilder> list) {
-        return newQueueFreeRenderBuilders.addAll(list);
+//    @Redirect(method = "stopChunkUpdates", at = @At(value = "INVOKE", target = "Ljava/util/concurrent/BlockingQueue;addAll(Ljava/util/Collection;)Z"))
+//    public boolean stopChunkUpdates(BlockingQueue<RegionRenderCacheBuilder> instance, Collection<RegionRenderCacheBuilder> list) {
+//        return newQueueFreeRenderBuilders.addAll(list);
+//    }
+    @Overwrite
+    public void stopChunkUpdates() {
+        this.clearChunkUpdates();
+
+        while (this.runChunkUploads(0L)) {
+
+        }
+
+        List<RegionRenderCacheBuilder> list = Lists.newArrayList();
+
+        while (list.size() != 5) {
+            try {
+                list.add(this.allocateRenderBuilder());
+            } catch (InterruptedException ignored) {
+
+            }
+        }
+
+        newQueueFreeRenderBuilders.addAll(list);
     }
 
     /**

@@ -40,8 +40,10 @@ public class RenderGlobalMixin {
     public void updateChunksVanillaOptifine(long finishTimeNano, CallbackInfo ci) {
         if (!this.chunksToUpdate.isEmpty()) {
             Iterator<RenderChunk> iterator = this.chunksToUpdate.iterator();
-            System.out.println(this.chunksToUpdate.size());
+//            int i = 0;
+//            int origSize = this.chunksToUpdate.size();
             while (iterator.hasNext()) {
+//                i++;
                 RenderChunk renderchunk = iterator.next();
 
                 if (!this.renderDispatcher.updateChunkLater(renderchunk)) {
@@ -51,6 +53,7 @@ public class RenderGlobalMixin {
                 renderchunk.setNeedsUpdate(false);
                 iterator.remove();
             }
+//            System.out.println("Ran: " + i + "x, size: " + this.chunksToUpdate.size() + "/" + origSize);
         }
         ci.cancel();
     }
