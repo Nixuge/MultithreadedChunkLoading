@@ -1,4 +1,4 @@
-package me.nixuge.multithreadedchunkloading.mixins;
+package me.nixuge.multithreadedchunkloading.mixins.render;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;

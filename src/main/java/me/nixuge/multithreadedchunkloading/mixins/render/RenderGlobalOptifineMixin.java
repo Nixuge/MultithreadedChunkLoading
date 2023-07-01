@@ -1,4 +1,4 @@
-package me.nixuge.multithreadedchunkloading.mixins;
+package me.nixuge.multithreadedchunkloading.mixins.render;
 
 import com.google.common.collect.Lists;
 import me.nixuge.multithreadedchunkloading.mixins.accessor.ViewFrustumAccessor;
@@ -25,71 +25,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.*;
 
 @Mixin(RenderGlobal.class)
-public class RenderGlobalMixin {
-    @Final
-    @Shadow
-    private ChunkRenderDispatcher renderDispatcher;
-    @Shadow
-    private Set<RenderChunk> chunksToUpdate;
-    @Shadow
-    private double frustumUpdatePosX;
-    @Shadow
-    private double frustumUpdatePosY;
-    @Shadow
-    private double frustumUpdatePosZ;
-    @Shadow
-    private int frustumUpdatePosChunkX;
-    @Shadow
-    private int frustumUpdatePosChunkY;
-    @Shadow
-    private int frustumUpdatePosChunkZ;
-
-
-    /**
-     * Why is this injected here?
-     * At first glance it indeed seems weird, it looks like I'm replacing the entire function anyways,
-     * so why not inject at head or just overwrite?
-     * The answer to that: Optifine.
-     * When optifine is injected this function runs 3 loops (unlike 1 in vanilla):
-     * - if (this.chunksToUpdateForced.size() > 0)
-     * - if (this.chunksToResortTransparency.size() > 0)
-     * - if (!this.chunksToUpdate.isEmpty()) (the vanilla one we want to inject into)
-     * Thankfully no need to keep a counter of the size() calls or smth, since the vanilla function,
-     * unlike the OF ones, uses isEmpty()
-     * So we just let OF run the first 2 loops (which don't return anyways), then just
-     * "overwrite" the last one by injecting at its start & cancelling right after
-     * so the real one doesn't run
-     */
-    @Inject(method = "updateChunks", at = @At(value = "INVOKE", target = "Ljava/util/Set;isEmpty()Z"), cancellable = true)
-    public void updateChunksVanillaOptifine(long finishTimeNano, CallbackInfo ci) {
-        if (!this.chunksToUpdate.isEmpty()) {
-            Iterator<RenderChunk> iterator = this.chunksToUpdate.iterator();
-//            int i = 0;
-//            int origSize = this.chunksToUpdate.size();
-            while (iterator.hasNext()) {
-//                i++;
-                RenderChunk renderchunk = iterator.next();
-
-                if (!this.renderDispatcher.updateChunkLater(renderchunk)) {
-                    break;
-                }
-
-                renderchunk.setNeedsUpdate(false);
-                iterator.remove();
-            }
-//            System.out.println("Ran: " + i + "x, size: " + this.chunksToUpdate.size() + "/" + origSize);
-//            System.out.println("Size left: " + this.chunksToUpdate.size());
-        }
-        ci.cancel();
-    }
-
-//    @Redirect(method = "setupTerrain", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/BlockPos;distanceSq(DDD)D"), remap = false)
-//    public double owo(double toX, double toY, double toZ) {
-//        System.out.println("CALLED THINGY");
-//        return 1000;
-//    }
-
-
+public class RenderGlobalOptifineMixin {
     // ===== Failed attempt at fixing optifine below =====
     // Basically trying to replicate Vanilla behavior, but for some reason it just doesn't work.
     // Only problem left with optifine is that it tries to optimize the chunk loading, and so
@@ -113,7 +49,27 @@ public class RenderGlobalMixin {
     // Honestly for now leaving it like that. Will see if I have some time to spare at some
     // point in the future.
     // For now, it's no need.
+    //
+    // For the time being I disabled the class in the mixin. If any dev wants to do some
+    // testing here, just add "render.RenderGlobalOptifineMixin" to the mixins file.
 
+    @Final
+    @Shadow
+    private ChunkRenderDispatcher renderDispatcher;
+    @Shadow
+    private Set<RenderChunk> chunksToUpdate;
+    @Shadow
+    private double frustumUpdatePosX;
+    @Shadow
+    private double frustumUpdatePosY;
+    @Shadow
+    private double frustumUpdatePosZ;
+    @Shadow
+    private int frustumUpdatePosChunkX;
+    @Shadow
+    private int frustumUpdatePosChunkY;
+    @Shadow
+    private int frustumUpdatePosChunkZ;
     @Shadow
     private int renderDistanceChunks;
     @Shadow
