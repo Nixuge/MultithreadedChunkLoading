@@ -5,7 +5,8 @@
   "mixins": [],
   "client": [
     "ChunkRenderDispatcherMixin",
-    "RenderGlobalMixin"
+    "RenderGlobalMixin",
+    "accessor.ViewFrustumAccessor"
   ],
   "server": []
 }

@@ -90,6 +90,18 @@ public class ChunkRenderDispatcherMixin {
         return true;
     }
 
+//    DOESN'T WORK: USELESS.
+    /*
+     * @author
+     * @reason
+     */
+//    @Overwrite
+//    public boolean updateChunkNow(RenderChunk chunkRenderer)
+//    {
+//        System.out.println("debug?");
+//        return updateChunkLater(chunkRenderer);
+//    }
+
     /**
      * @author Nixuge
      * @reason newQueueChunkUpdates
