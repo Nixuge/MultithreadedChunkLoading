@@ -5,16 +5,16 @@ import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher;
 import net.minecraft.client.renderer.chunk.RenderChunk;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Iterator;
 import java.util.Set;
 
 @Mixin(RenderGlobal.class)
 public class RenderGlobalMixin {
-    @Shadow
-    private boolean displayListEntitiesDirty;
     @Final
     @Shadow
     private ChunkRenderDispatcher renderDispatcher;
@@ -22,16 +22,25 @@ public class RenderGlobalMixin {
     private Set<RenderChunk> chunksToUpdate;
 
     /**
-     * @author Nixuge
-     * @reason Refactored from decompile & removed the "late" check
+     * Why is this injected here?
+     * At first glance it indeed seems weird, it looks like I'm replacing the entire function anyways,
+     * so why not inject at head or just overwrite?
+     * The answer to that: Optifine.
+     * When optifine is injected this function runs 3 loops (unlike 1 in vanilla):
+     * - if (this.chunksToUpdateForced.size() > 0)
+     * - if (this.chunksToResortTransparency.size() > 0)
+     * - if (!this.chunksToUpdate.isEmpty()) (the vanilla one we want to inject into)
+     * Thankfully no need to keep a counter of the size() calls or smth, since the vanilla function,
+     * unlike the OF ones, uses isEmpty()
+     * So we just let OF run the first 2 loops (which don't return anyways), then just
+     * "overwrite" the last one by injecting at its start & cancelling right after
+     * so the real one doesn't run
      */
-    @Overwrite
-    public void updateChunks(long finishTimeNano) {
-        this.displayListEntitiesDirty |= this.renderDispatcher.runChunkUploads(finishTimeNano);
-
+    @Inject(method = "updateChunks", at = @At(value = "INVOKE", target = "Ljava/util/Set;isEmpty()Z"), cancellable = true)
+    public void owo(long finishTimeNano, CallbackInfo ci) {
         if (!this.chunksToUpdate.isEmpty()) {
             Iterator<RenderChunk> iterator = this.chunksToUpdate.iterator();
-
+            System.out.println(this.chunksToUpdate.size());
             while (iterator.hasNext()) {
                 RenderChunk renderchunk = iterator.next();
 
@@ -43,5 +52,6 @@ public class RenderGlobalMixin {
                 iterator.remove();
             }
         }
+        ci.cancel();
     }
 }
