@@ -2,16 +2,11 @@ package me.nixuge.multithreadedchunkloading.mixins;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RegionRenderCacheBuilder;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.chunk.*;
 import net.minecraft.client.renderer.vertex.VertexBuffer;
-import net.minecraft.util.EnumWorldBlockLayer;
 import org.spongepowered.asm.mixin.*;
 
 import org.spongepowered.asm.mixin.injection.At;
@@ -37,8 +32,8 @@ public class ChunkRenderDispatcherMixin {
     @Shadow
     private BlockingQueue<ChunkCompileTaskGenerator> queueChunkUpdates;
 
-//    @Shadow
-//    private BlockingQueue<RegionRenderCacheBuilder> queueFreeRenderBuilders;
+    @Shadow
+    private BlockingQueue<RegionRenderCacheBuilder> queueFreeRenderBuilders;
 
     private static BlockingQueue<RegionRenderCacheBuilder> newQueueFreeRenderBuilders;
 
@@ -53,14 +48,6 @@ public class ChunkRenderDispatcherMixin {
     @Shadow
     public boolean runChunkUploads(long p_178516_1_) {
         return false;
-    }
-
-    @Shadow
-    private void uploadDisplayList(WorldRenderer p_178510_1_, int p_178510_2_, RenderChunk chunkRenderer) {
-    }
-
-    @Shadow
-    private void uploadVertexBuffer(WorldRenderer p_178506_1_, VertexBuffer vertexBufferIn) {
     }
 
     @Inject(method = "<init>", at = @At("RETURN"))
@@ -159,34 +146,5 @@ public class ChunkRenderDispatcherMixin {
     @Redirect(method = "runChunkUploads", at = @At(value = "INVOKE", target = "Ljava/lang/System;nanoTime()J"))
     public long runChunkUploadsBypassNanoTime() {
         return 0;
-    }
-
-    /**
-     * @author Nixuge
-     * @reason optifine
-     */
-    @Overwrite
-    public ListenableFuture<Object> uploadChunk(final EnumWorldBlockLayer player, final WorldRenderer p_178503_2_, final RenderChunk chunkRenderer, final CompiledChunk compiledChunkIn) {
-        if (Minecraft.getMinecraft().isCallingFromMinecraftThread()) {
-            if (OpenGlHelper.useVbo()) {
-                this.uploadVertexBuffer(p_178503_2_, chunkRenderer.getVertexBufferByLayer(player.ordinal()));
-            } else {
-                this.uploadDisplayList(p_178503_2_, ((ListedRenderChunk) chunkRenderer).getDisplayList(player, compiledChunkIn), chunkRenderer);
-            }
-
-            p_178503_2_.setTranslation(0.0D, 0.0D, 0.0D);
-            return Futures.immediateFuture(null);
-        } else {
-            ListenableFutureTask<Object> listenablefuturetask = ListenableFutureTask.create(new Runnable() {
-                public void run() {
-                    uploadChunk(player, p_178503_2_, chunkRenderer, compiledChunkIn);
-                }
-            }, null);
-
-            synchronized (this.queueChunkUploads) {
-                this.queueChunkUploads.add(listenablefuturetask);
-                return listenablefuturetask;
-            }
-        }
     }
 }

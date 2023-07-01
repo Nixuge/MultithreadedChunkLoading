@@ -37,7 +37,7 @@ public class RenderGlobalMixin {
      * so the real one doesn't run
      */
     @Inject(method = "updateChunks", at = @At(value = "INVOKE", target = "Ljava/util/Set;isEmpty()Z"), cancellable = true)
-    public void owo(long finishTimeNano, CallbackInfo ci) {
+    public void updateChunksVanillaOptifine(long finishTimeNano, CallbackInfo ci) {
         if (!this.chunksToUpdate.isEmpty()) {
             Iterator<RenderChunk> iterator = this.chunksToUpdate.iterator();
             System.out.println(this.chunksToUpdate.size());
