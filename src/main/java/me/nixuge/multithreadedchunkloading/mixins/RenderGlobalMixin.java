@@ -107,6 +107,12 @@ public class RenderGlobalMixin {
     // TODO: try to rip up the (literally) ENTIRE thing, see if it works.
     // if it doesn't, give up.
     // if it does, work from there to redo it
+    //
+    // Note that even tho i'm spending hours on this, it's by no means necessary.
+    // The mod is still VERY effective with Optifine, a bit slower but pretty good overall.
+    // Honestly for now leaving it like that. Will see if I have some time to spare at some
+    // point in the future.
+    // For now, it's no need.
 
     @Shadow
     private int renderDistanceChunks;
@@ -169,7 +175,7 @@ public class RenderGlobalMixin {
 //        set = this.chunksToUpdate;
 //    }
 
-    @Inject(method = "setupTerrain", at = @At("HEAD"))
+    @Inject(method = "setupTerrain", at = @At("RETURN"))
     public void please(Entity viewEntity, double partialTicks, ICamera camera, int frameCount, boolean playerSpectator, CallbackInfo ci) {
         set = this.chunksToUpdate;
         double d0 = viewEntity.posX - this.frustumUpdatePosX;
