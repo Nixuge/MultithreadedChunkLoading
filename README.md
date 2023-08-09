@@ -7,6 +7,10 @@ A mod that multithreads Minecraft's chunk loading
 # What does this mod do ?
 Basically grows the vanilla threadcount/list sizes for everything that could make chunk compilation/rendering faster, as well as removing the limitations in those functions that could make the chunk loading stop in favor of other rendering elements
 
+The mod name is technically a bit clickbaity, Minecraft's chunkloading is already multithreaded, except:
+- In vanilla the threadcount is so low it basically doesn't do much
+- When using Optifine (which you most likely should instead of this mod) it adapts the threadcount based on your available ressources, which is good except if you actually want to dedicate all of your ressources strictly to loading chunks
+
 # Why shouldn't I use it ?
 - Possibly HIGH memory usage (main deal breaker)
 - Reduced FPS while chunks are loading, basically prioritizing their compilation over other stuff (tradeoff that you may or may not want, up to you)
